@@ -1,0 +1,52 @@
+# ===========================
+# Python
+# ===========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / Packaging
+dist/
+build/
+*.egg-info/
+*.egg
+*.whl
+
+# Virtual Environments
+venv/
+.venv/
+env/
+
+# ===========================
+# IDE / Editor
+# ===========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# ===========================
+# OS Generated Files
+# ===========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===========================
+# Environment & Secrets
+# ===========================
+.env
+.env.local
+*.pem
+*.key
+
+# ===========================
+# Logs & Temp
+# ===========================
+*.log
+tmp/
+temp/
