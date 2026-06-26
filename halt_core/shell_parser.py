@@ -1,14 +1,13 @@
 import shlex
 import re
 from typing import Tuple, Set, List, Optional
+from halt_core.config import config
 
 # Match valid environment variable assignments at start of a command segment (e.g. VAR=val)
 VAR_ASSIGN_RE = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*=')
 
-DEFAULT_DENY_LIST = {
-    "rm", "wget", "curl", "chmod", "sudo", "chown", "mv", "dd", "mkfs", 
-    "shutdown", "reboot", "poweroff", "init", "systemctl", "ufw", "iptables"
-}
+# Use configuration deny list
+DEFAULT_DENY_LIST = config.deny_commands
 
 WRAPPERS = {"sudo", "env", "nohup", "setsid", "exec", "xargs"}
 SEPARATORS = {"&&", "||", "|", ";", "&", "\n"}
@@ -165,7 +164,7 @@ def is_safe_shell_command(command_str: str, deny_list: Optional[Set[str]] = None
         Tuple[bool, str]: (is_safe, reason)
     """
     if deny_list is None:
-        deny_list = DEFAULT_DENY_LIST
+        deny_list = config.deny_commands
 
     command_str = command_str.strip()
     if not command_str:

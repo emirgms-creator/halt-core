@@ -1,5 +1,6 @@
 import ast
 from typing import Tuple
+from halt_core.config import config
 
 class SecurityViolation(Exception):
     """Exception raised immediately when a security policy violation is detected in the AST."""
@@ -13,21 +14,10 @@ class SecurityVisitor(ast.NodeVisitor):
     Fails fast by raising a SecurityViolation as soon as an unsafe pattern is found.
     """
     def __init__(self):
-        # Use sets for O(1) membership lookups
-        self.blocked_modules = {
-            "subprocess", "importlib", "sys", "pty", 
-            "ctypes", "code", "codeop", "runpy", "commands", 
-            "builtins", "pdb", "bdb", "sysconfig", "platform",
-            "ctypes.util", "inspect", "trace"
-        }
-        self.blocked_functions = {
-            "eval", "exec", "__import__", "compile", "globals", "locals", 
-            "getattr", "setattr"
-        }
-        self.blocked_calls = {
-            "system", "popen", "spawn", "rmtree", "Popen", "run", 
-            "call", "check_output", "check_call", "getoutput", "getstatusoutput"
-        }
+        # Read from dynamic configuration
+        self.blocked_modules = config.blocked_modules
+        self.blocked_functions = config.blocked_functions
+        self.blocked_calls = config.blocked_calls
 
     def _flag_violation(self, reason: str) -> None:
         raise SecurityViolation(reason)

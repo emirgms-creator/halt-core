@@ -2,6 +2,7 @@ import re
 from typing import List
 from halt_core.interceptor.rules.base import BaseRule
 from halt_core.models.schemas import AgentAction, SecurityDecision, ActionType
+from halt_core.config import config
 
 class ShellDenyListRule(BaseRule):
     """
@@ -41,12 +42,13 @@ class ShellDenyListRule(BaseRule):
 
         # Check for command keywords and chained commands using deep shell parser
         from halt_core.shell_parser import is_safe_shell_command
-        safe, parser_reason = is_safe_shell_command(command, set(self._deny_commands))
+        safe, parser_reason = is_safe_shell_command(command, config.deny_commands)
         if not safe:
             violated_items.append(parser_reason)
 
-        # Check for command keywords (original regex backup)
-        for cmd, pattern in self._command_patterns.items():
+        # Check for command keywords (original regex backup) dynamically compiled
+        for cmd in config.deny_commands:
+            pattern = re.compile(rf"\b{cmd}\b", re.IGNORECASE)
             if pattern.search(command):
                 msg = f"blocked utility '{cmd}'"
                 if not any(cmd in item for item in violated_items):
