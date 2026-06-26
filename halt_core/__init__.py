@@ -6,6 +6,9 @@ from halt_core.interceptor.rules.stateful_rules import SuspiciousSequenceRule
 from halt_core.interceptor.rules.semantic_rules import SemanticIntentRule
 from halt_core.interceptor.engine import RuleEngine
 from halt_core.interceptor.middleware import CommandInterceptor
+from halt_core.ast_guard import is_safe_python_code
+from halt_core.shell_parser import is_safe_shell_command
+from halt_core.file_guard import is_safe_file_payload
 
 # Shared global interceptor maintaining session memory across SDK calls
 _memory_manager = MemoryManager()

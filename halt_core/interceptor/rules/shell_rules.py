@@ -39,10 +39,18 @@ class ShellDenyListRule(BaseRule):
         command = action.command
         violated_items = []
 
-        # Check for command keywords
+        # Check for command keywords and chained commands using deep shell parser
+        from halt_core.shell_parser import is_safe_shell_command
+        safe, parser_reason = is_safe_shell_command(command, set(self._deny_commands))
+        if not safe:
+            violated_items.append(parser_reason)
+
+        # Check for command keywords (original regex backup)
         for cmd, pattern in self._command_patterns.items():
             if pattern.search(command):
-                violated_items.append(f"blocked utility '{cmd}'")
+                msg = f"blocked utility '{cmd}'"
+                if not any(cmd in item for item in violated_items):
+                    violated_items.append(msg)
 
         # Check for complex signatures
         for signature_name, pattern in self._signature_patterns.items():
