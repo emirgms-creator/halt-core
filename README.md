@@ -1,4 +1,18 @@
-# Halt Core
+<p align="center">
+  <img src="logo.svg" alt="Halt Core Logo" width="160" height="160" />
+</p>
+
+<h1 align="center">Halt Core</h1>
+
+<p align="center">
+  <a href="https://pypi.org/project/halt-core/"><img src="https://img.shields.io/pypi/v/halt-core.svg?color=blue" alt="PyPI Version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/emirgms-creator/halt-core.svg?color=green" alt="License"></a>
+  <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code Style"></a>
+</p>
+
+<p align="center">
+  <strong>Zero-trust security guardrail and sub-millisecond middleware SDK for autonomous AI agents.</strong>
+</p>
 
 Halt Core is a zero-trust, sub-millisecond security middleware and execution guardrail for autonomous AI agents. It intercepts, parses, and validates agent-generated system commands and database queries *locally* before they are executed.
 
