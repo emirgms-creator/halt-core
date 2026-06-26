@@ -80,10 +80,82 @@ def split_into_segments(tokens: List[str]) -> List[List[str]]:
         segments.append(current_segment)
     return segments
 
+def check_dynamic_executable(segment: List[str]) -> Tuple[bool, str]:
+    """
+    Checks if the root utility token at index 0 (after wrappers/variables) is dynamic.
+    Dynamic commands contain '$', '(', or '`'.
+    """
+    i = 0
+    # Skip variables
+    while i < len(segment) and VAR_ASSIGN_RE.match(segment[i]):
+        i += 1
+    # Skip wrappers
+    while i < len(segment):
+        token = segment[i]
+        basename = get_basename(token)
+        if basename in WRAPPERS:
+            i += 1
+            while i < len(segment) and VAR_ASSIGN_RE.match(segment[i]):
+                i += 1
+            continue
+        break
+        
+    if i < len(segment):
+        token = segment[i]
+        # Skip subshell opening '(' to check command inside it
+        if token == '(':
+            i += 1
+            while i < len(segment) and VAR_ASSIGN_RE.match(segment[i]):
+                i += 1
+            if i < len(segment):
+                token = segment[i]
+                
+        # Check for dynamic characters
+        if any(c in token for c in ('$', '(', '`')):
+            return False, f"Dynamic command execution attempt detected in executable position: '{token}'"
+            
+    return True, ""
+
+def extract_redirection_payload(preceding_tokens: List[str]) -> str:
+    """
+    Extracts the written string payload from preceding tokens of a redirection operator.
+    Supports echo, printf, and cat (via here-string).
+    """
+    i = 0
+    # Skip variables
+    while i < len(preceding_tokens) and VAR_ASSIGN_RE.match(preceding_tokens[i]):
+        i += 1
+    # Skip wrappers
+    while i < len(preceding_tokens):
+        token = preceding_tokens[i]
+        basename = get_basename(token)
+        if basename in WRAPPERS:
+            i += 1
+            while i < len(preceding_tokens) and VAR_ASSIGN_RE.match(preceding_tokens[i]):
+                i += 1
+            continue
+        break
+        
+    if i >= len(preceding_tokens):
+        return ""
+        
+    utility = get_basename(preceding_tokens[i]).lower()
+    args = preceding_tokens[i+1:]
+    
+    if utility in {"echo", "printf"}:
+        clean_args = [arg for arg in args if not arg.startswith('-')]
+        return " ".join(clean_args)
+    elif utility == "cat":
+        for idx, arg in enumerate(args):
+            if arg == "<<<" and idx + 1 < len(args):
+                return args[idx + 1]
+    return ""
+
 def is_safe_shell_command(command_str: str, deny_list: Optional[Set[str]] = None) -> Tuple[bool, str]:
     """
     Parses complex, chained shell commands and validates them against a deny-list.
     Handles splitting on &&, ||, |, ;, and recursively inspects nested shell executions.
+    Also validates against dynamic command execution (Task 1) and append bypasses (Task 2).
     
     Args:
         command_str (str): The shell command string to inspect.
@@ -113,9 +185,25 @@ def is_safe_shell_command(command_str: str, deny_list: Optional[Set[str]] = None
     segments = split_into_segments(tokens)
 
     for segment in segments:
+        # Task 1: Executable Position Analysis
+        safe, d_reason = check_dynamic_executable(segment)
+        if not safe:
+            return False, d_reason
+            
+        # Task 2: Redirection Append Bypass Check
+        for idx, tok in enumerate(segment):
+            if tok in {">", ">>"}:
+                filename = segment[idx + 1] if idx + 1 < len(segment) else None
+                preceding = segment[:idx]
+                payload = extract_redirection_payload(preceding)
+                if payload:
+                    from halt_core.file_guard import is_safe_file_payload
+                    f_safe, f_reason = is_safe_file_payload(payload, filename)
+                    if not f_safe:
+                        return False, f"Redirected payload violation: {f_reason}"
+
         utilities = extract_utilities(segment)
         for utility in utilities:
-            # Normalize to lowercase for case-insensitive check
             normalized_util = utility.lower()
             if normalized_util in deny_list:
                 return False, f"Blocked command utility detected: '{utility}'"
@@ -123,7 +211,6 @@ def is_safe_shell_command(command_str: str, deny_list: Optional[Set[str]] = None
             # Recursively inspect command strings passed to shell executors (e.g. bash -c "cmd")
             if normalized_util in SHELL_EXECUTORS:
                 for idx, tok in enumerate(segment):
-                    # Standard shell argument flags that accept command strings
                     if tok.lower() in {"-c", "--c", "/c", "/k", "-command", "-cmd"}:
                         if idx + 1 < len(segment):
                             nested_cmd = segment[idx + 1]

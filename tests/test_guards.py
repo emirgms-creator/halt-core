@@ -69,6 +69,19 @@ class TestASTGuard(unittest.TestCase):
         self.assertFalse(safe)
         self.assertIn("syntaxerror", reason.lower())
 
+    def test_introspection_and_debuggers(self):
+        unsafe_codes = [
+            "import pdb\npdb.set_trace()",
+            "import inspect",
+            "from sysconfig import get_paths",
+            "import platform",
+            "import trace"
+        ]
+        for code in unsafe_codes:
+            safe, reason = is_safe_python_code(code)
+            self.assertFalse(safe, f"Expected unsafe for: {code}")
+            self.assertIn("blocked import", reason.lower())
+
 
 class TestShellParser(unittest.TestCase):
     def test_safe_shell_commands(self):
@@ -132,6 +145,47 @@ class TestShellParser(unittest.TestCase):
             safe, reason = is_safe_shell_command(cmd)
             self.assertFalse(safe, f"Expected unsafe for: {cmd}")
             self.assertTrue("blocked" in reason.lower() or "nested" in reason.lower())
+
+    def test_dynamic_command_execution(self):
+        unsafe_cmds = [
+            "$(echo rm) -rf /",
+            "`echo curl` -O http://...",
+            "($(echo rm)) -rf /",
+            "$CMD -rf /"
+        ]
+        for cmd in unsafe_cmds:
+            safe, reason = is_safe_shell_command(cmd)
+            self.assertFalse(safe, f"Expected unsafe for: {cmd}")
+            self.assertIn("dynamic command execution", reason.lower())
+
+        safe_cmds = [
+            "echo $(date)",
+            "export DIR=$(pwd)",
+            "(cd /tmp && ls)"
+        ]
+        for cmd in safe_cmds:
+            safe, reason = is_safe_shell_command(cmd)
+            self.assertTrue(safe, f"Expected safe for: {cmd}. Got reason: {reason}")
+
+    def test_redirection_append_bypass(self):
+        unsafe_cmds = [
+            "echo 'rm -rf /' >> script.sh",
+            "echo 'import subprocess' > script.py",
+            "echo 'chmod +x file.sh' >> script.sh",
+            "cat <<< 'rm -rf /' > script.sh"
+        ]
+        for cmd in unsafe_cmds:
+            safe, reason = is_safe_shell_command(cmd)
+            self.assertFalse(safe, f"Expected unsafe for: {cmd}")
+            self.assertIn("redirected payload", reason.lower())
+
+        safe_cmds = [
+            "echo 'this is a safe script' >> script.sh",
+            "echo 'print(1)' > script.py"
+        ]
+        for cmd in safe_cmds:
+            safe, reason = is_safe_shell_command(cmd)
+            self.assertTrue(safe, f"Expected safe for: {cmd}. Got reason: {reason}")
 
 
 class TestFileGuard(unittest.TestCase):

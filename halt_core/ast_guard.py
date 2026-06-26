@@ -17,7 +17,8 @@ class SecurityVisitor(ast.NodeVisitor):
         self.blocked_modules = {
             "subprocess", "importlib", "sys", "pty", 
             "ctypes", "code", "codeop", "runpy", "commands", 
-            "builtins"
+            "builtins", "pdb", "bdb", "sysconfig", "platform",
+            "ctypes.util", "inspect", "trace"
         }
         self.blocked_functions = {
             "eval", "exec", "__import__", "compile", "globals", "locals", 
